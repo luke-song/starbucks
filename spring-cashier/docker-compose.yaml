@@ -1,0 +1,59 @@
+version: "3"
+
+services:
+  redis:
+    image: redis
+    platform: linux/amd64
+    networks:
+      - network
+    restart: always
+  mysql:
+    image: mysql:8.0
+    platform: linux/amd64
+    volumes:
+      - /tmp:/tmp
+    networks:
+      - network
+    environment:
+      MYSQL_ROOT_PASSWORD: "banana"
+    restart: always
+  cashier:
+    image: spring-cashier
+    platform: linux/amd64
+    depends_on:
+      - mysql
+    volumes:
+      - /tmp:/tmp
+    networks:
+      - network
+    environment:
+      MYSQL_HOST: "mysql"
+      MYSQL_USER: "root"
+      MYSQL_PASS: "banana"
+      REDIS_HOST: "redis"
+      REDIS_PASSWORD: "foobared"
+    restart: always
+  lb:
+    image: eeacms/haproxy
+    platform: linux/amd64
+    depends_on:
+      - cashier
+    ports:
+      - "80:5000"
+      - "1936:1936"
+    environment:
+      BACKENDS: "cashier"
+      BACKENDS_PORT: "9090"
+      DNS_ENABLED: "true"
+      COOKIES_ENABLED: "false"
+      LOG_LEVEL: "info"
+    networks:
+      - network
+
+volumes:
+  schemas:
+    external: false
+
+networks:
+  network:
+    driver: bridge
